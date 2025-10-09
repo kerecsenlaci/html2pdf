@@ -1,0 +1,67 @@
+{# Fejléc (checkbox szerint) #}
+{% if options is defined and options.show_header %}
+  {% include '@html2pdf/header.twig' ignore missing %}
+{% endif %}
+
+{% if options is not defined or options.show_title %}
+  <h1 style="margin:12px 0 8px 0; font-size:18pt;">Felhasználói összefoglaló: {{ user.name|default('') }} (ID: {{ user.id }})</h1>
+{% endif %}
+
+<table style="width:100%; border-collapse:collapse; font-size:11pt;" cellpadding="6" cellspacing="0" border="1">
+  <tr>
+    <td style="width:25%; font-weight:600;">Teljes név</td>
+    <td style="width:75%;">{{ (user.firstname~' '~user.realname)|trim }}</td>
+  </tr>
+  <tr>
+    <td style="font-weight:600;">Bejelentkezési név</td>
+    <td>{{ user.name|default('') }}</td>
+  </tr>
+  <tr>
+    <td style="font-weight:600;">Szervezet</td>
+    <td>{{ user.entity_name|default('') }}</td>
+  </tr>
+  <tr>
+    <td style="font-weight:600;">Kategória</td>
+    <td>{{ user.category_name|default('') }}</td>
+  </tr>
+  <tr>
+    <td style="font-weight:600;">E-mail címek</td>
+    <td>
+      {% if user.emails is defined and user.emails|length > 0 %}
+        {{ user.emails|join(', ') }}
+      {% else %}—{% endif %}
+    </td>
+  </tr>
+  <tr>
+    <td style="font-weight:600;">Telefon</td>
+    <td>{{ user.phone|default('') }} {{ user.mobile|default('') }}</td>
+  </tr>
+  <tr>
+    <td style="font-weight:600;">Alapértelmezett profil</td>
+    <td>
+      {% set def = (user.profiles|default([]))|filter(p => p.default)|first %}
+      {% if def is not empty %}{{ def.name }}{% else %}—{% endif %}
+    </td>
+  </tr>
+  <tr>
+    <td style="font-weight:600;">Minden profil</td>
+    <td>
+      {% if user.profiles is defined and user.profiles|length > 0 %}
+        {{ user.profiles|map(p => p.name)|join(', ') }}
+      {% else %}—{% endif %}
+    </td>
+  </tr>
+  <tr>
+    <td style="font-weight:600;">Csoportok</td>
+    <td>
+      {% if user.groups is defined and user.groups|length > 0 %}
+        {{ user.groups|join(', ') }}
+      {% else %}—{% endif %}
+    </td>
+  </tr>
+</table>
+
+{# Lábléc (checkbox szerint) #}
+{% if options is defined and options.show_footer %}
+  {% include '@html2pdf/footer.twig' ignore missing %}
+{% endif %}

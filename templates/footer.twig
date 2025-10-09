@@ -1,0 +1,33 @@
+{# Lábléc – webcím, e-mail, telefon, cím #}
+{% set website = company_website|default('https://pelda.hu') %}
+{% set email   = company_email|default('info@pelda.hu') %}
+{% set phone   = company_phone|default('+36 1 234 5678') %}
+{% set address = company_address|default('1111 Budapest, Példa utca 1.') %}
+
+<div style="width:100%; border-top:1px solid #ddd; margin-top:12px; padding-top:8px; font-size:10pt;">
+  <table style="width:100%; border-collapse:collapse;">
+    <tr>
+      <td style="width:25%; vertical-align:top;">
+        <strong>Web:</strong><br/>
+        <a href="{{ website }}" style="text-decoration:none; color:#000;">{{ website }}</a>
+      </td>
+      <td style="width:25%; vertical-align:top;">
+        <strong>E-mail:</strong><br/>
+        <a href="mailto:{{ email }}" style="text-decoration:none; color:#000;">{{ email }}</a>
+      </td>
+      <td style="width:20%; vertical-align:top;">
+        <strong>Telefon:</strong><br/>
+        <a href="tel:{{ phone }}" style="text-decoration:none; color:#000;">{{ phone }}</a>
+      </td>
+      <td style="width:30%; vertical-align:top;">
+        <strong>Cím:</strong><br/>
+        {{ address }}
+      </td>
+    </tr>
+  </table>
+</div>
+{# Oldalszám #}
+<div style="width:100%; border-top:1px solid #ddd; padding:6px 0; font-size:10pt; text-align:center;">
+  {# Ha a motor nem ad oldalszámot változóban, itt nyugodtan hagyd ki: #}
+  Oldal {{ page|default('') }} {{ pages is defined and page is defined ? '/' ~ pages : '' }}
+</div>
