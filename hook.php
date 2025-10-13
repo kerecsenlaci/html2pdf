@@ -1,10 +1,43 @@
 <?php
 if (!defined('GLPI_ROOT')) { die('Direct access not allowed'); }
 
+function plugin_html2pdf_install() {
+   $pdf_inc = Plugin::getPhpDir('pdf') . '/inc';
+   $source  = GLPI_ROOT . '/plugins/html2pdf/install/api.class.php';
+   $target  = $pdf_inc . '/api.class.php';
+
+   if (!is_dir($pdf_inc)) {
+      Session::addMessageAfterRedirect(__('A "pdf" bővítmény nincs telepítve. Telepítsd előbb, majd telepítsd újra a html2pdf-et.', 'html2pdf'), true, ERROR);
+      return false;
+   }
+   if (!@copy($source, $target)) {
+      Session::addMessageAfterRedirect(__('Nem sikerült bemásolni az api.class.php fájlt a pdf pluginba.', 'html2pdf'), true, ERROR);
+      return false;
+   }
+   $marker = "<?php /* installed-by: html2pdf */ ?>\n";
+   $data   = @file_get_contents($target);
+   if ($data !== false && strpos($data, 'installed-by: html2pdf') === false) {
+      $data = $marker . $data;
+      file_put_contents($target, $data);
+   }
+   return true;
+}
+
+function plugin_html2pdf_uninstall() {
+   $pdf_inc = Plugin::getPhpDir('pdf') . '/inc';
+   $target  = $pdf_inc . '/api.class.php';
+   if (is_file($target)) {
+      $data = @file_get_contents($target);
+      if ($data !== false && strpos($data, 'installed-by: html2pdf') !== false) {
+         @unlink($target);
+      }
+   }
+   return true;
+}
+
 /** pdf jog ellenőrzés */
 function plugin_html2pdf_user_can_use_pdf() : bool {
    if (!Plugin::isPluginActive('pdf')) return false;
-   // ha a pdf plugin külön jogkulcsot használna, itt lehetne ellenőrizni
    return Session::haveRight('ticket', READ) || Session::haveRight('user', READ);
 }
 
@@ -88,7 +121,7 @@ function plugin_html2pdf_pre_item_form(array $params) {
       return;
    }
 
-   // USER: itt CSAK a modált rendereljük rejtve; a gombot a post hookban tesszük be
+   // USER – itt CSAK a modált rakjuk le rejtve
    if ($params['item'] instanceof User) {
       if (!plugin_html2pdf_user_can_use_pdf()) return;
       $id = (int)$params['item']->getID(); if ($id<=0) return;
@@ -98,7 +131,7 @@ function plugin_html2pdf_pre_item_form(array $params) {
       $openId = 'html2pdf_open_user_'.mt_rand(100000,999999);
       plugin_html2pdf_print_modal($base, $templates, $openId);
 
-      // a post hookban egy azonosítóval keressük meg a modál nyitóját
+      // átadjuk az opener ID-t a post hooknak
       echo "<script>window.__html2pdf_open_user_id=".json_encode($openId).";</script>";
       return;
    }
@@ -142,7 +175,6 @@ function plugin_html2pdf_MassiveActions($type) {
    return [];
 }
 
-/** Massive actions – form */
 function plugin_html2pdf_MassiveActionsDisplay($options=[]) {
    if (($options['itemtype']??'')!=='User' || ($options['action']??'')!=='PluginHtml2pdfUserPrint') return false;
 
@@ -163,7 +195,6 @@ function plugin_html2pdf_MassiveActionsDisplay($options=[]) {
    return true;
 }
 
-/** Massive actions – process */
 function plugin_html2pdf_MassiveActionsProcess($data) {
    if (($data['itemtype']??'')!=='User' || ($data['action']??'')!=='PluginHtml2pdfUserPrint') return;
 
@@ -179,6 +210,8 @@ function plugin_html2pdf_MassiveActionsProcess($data) {
    $title   = !empty($data['title'])?1:0;
    $private = !empty($data['private'])?1:0;
 
-   $url = Plugin::getWebDir('html2pdf')."/front/generate_user_report.php?id={$users_id}&tpl=".rawurlencode($tpl)."&header={$header}&footer={$footer}&title={$title}&private={$private}";
+   $url = Plugin::getWebDir('html2pdf')."/front/generate_user_report.php"
+        . "?id={$users_id}&tpl=".rawurlencode($tpl)
+        . "&header={$header}&footer={$footer}&title={$title}&private={$private}";
    Html::redirect($url);
 }
