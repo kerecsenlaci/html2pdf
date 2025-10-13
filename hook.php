@@ -1,40 +1,6 @@
 <?php
 if (!defined('GLPI_ROOT')) { die('Direct access not allowed'); }
 
-function plugin_html2pdf_install() {
-   $pdf_inc = Plugin::getPhpDir('pdf') . '/inc';
-   $source  = GLPI_ROOT . '/plugins/html2pdf/install/api.class.php';
-   $target  = $pdf_inc . '/api.class.php';
-
-   if (!is_dir($pdf_inc)) {
-      Session::addMessageAfterRedirect(__('A "pdf" bővítmény nincs telepítve. Telepítsd előbb, majd telepítsd újra a html2pdf-et.', 'html2pdf'), true, ERROR);
-      return false;
-   }
-   if (!@copy($source, $target)) {
-      Session::addMessageAfterRedirect(__('Nem sikerült bemásolni az api.class.php fájlt a pdf pluginba.', 'html2pdf'), true, ERROR);
-      return false;
-   }
-   $marker = "<?php /* installed-by: html2pdf */ ?>\n";
-   $data   = @file_get_contents($target);
-   if ($data !== false && strpos($data, 'installed-by: html2pdf') === false) {
-      $data = $marker . $data;
-      file_put_contents($target, $data);
-   }
-   return true;
-}
-
-function plugin_html2pdf_uninstall() {
-   $pdf_inc = Plugin::getPhpDir('pdf') . '/inc';
-   $target  = $pdf_inc . '/api.class.php';
-   if (is_file($target)) {
-      $data = @file_get_contents($target);
-      if ($data !== false && strpos($data, 'installed-by: html2pdf') !== false) {
-         @unlink($target);
-      }
-   }
-   return true;
-}
-
 /** pdf jog ellenőrzés */
 function plugin_html2pdf_user_can_use_pdf() : bool {
    if (!Plugin::isPluginActive('pdf')) return false;
@@ -78,25 +44,47 @@ function plugin_html2pdf_print_modal(string $base_url, array $templates, string 
 </div>
 <script>
 (function(){
-  var open = document.getElementById(".json_encode($button_id).");
-  var modal = document.getElementById('{$modalId}');
-  var print = document.getElementById('{$printId}');
-  var sel = document.getElementById('{$selId}');
-  var cbH = document.getElementById('{$cbH}');
-  var cbF = document.getElementById('{$cbF}');
-  var cbT = document.getElementById('{$cbT}');
-  var cbP = document.getElementById('{$cbP}');
-  if (open) open.addEventListener('click', function(e){ e.preventDefault(); modal.style.display='block'; });
-  if (print) print.addEventListener('click', function(){
-     var url = ".json_encode($base_url)."
-       + '&tpl=' + encodeURIComponent(sel.value||'')
-       + '&header=' + (cbH.checked?1:0)
-       + '&footer=' + (cbF.checked?1:0)
-       + '&title='  + (cbT.checked?1:0)
-       + '&private='+ (cbP.checked?1:0);
-     window.open(url, '_blank');
-     modal.style.display='none';
-  });
+  var modalId = <?php echo json_encode($modalId); ?>;
+  var baseUrl = <?php echo json_encode($base_url); ?>;
+  var selId   = <?php echo json_encode($selId); ?>;
+  var printId = <?php echo json_encode($printId); ?>;
+  var cbH     = <?php echo json_encode($cbH); ?>;
+  var cbF     = <?php echo json_encode($cbF); ?>;
+  var cbT     = <?php echo json_encode($cbT); ?>;
+  var cbP     = <?php echo json_encode($cbP); ?>;
+  var openBtnId = <?php echo json_encode($button_id); ?>;
+
+  var modal = document.getElementById(modalId);
+
+  // ➊ Globális nyitó függvény REGISZTRÁLÁSA (nem kell létező DOM gomb!)
+  window.__html2pdfOpeners = window.__html2pdfOpeners || {};
+  window.__html2pdfOpeners[openBtnId] = function(){
+     if (modal) modal.style.display = 'block';
+  };
+
+  // ➋ Ha VAN tényleges DOM gomb ezzel az ID-val, kössük rá
+  var open = document.getElementById(openBtnId);
+  if (open) {
+    open.addEventListener('click', function(e){ e.preventDefault(); window.__html2pdfOpeners[openBtnId](); });
+  }
+
+  // ➌ Print gomb: paraméterek összerakása és nyitás új lapon
+  var print = document.getElementById(printId);
+  if (print) {
+    print.addEventListener('click', function(){
+       var sel = document.getElementById(selId);
+       var h = document.getElementById(cbH), f = document.getElementById(cbF);
+       var t = document.getElementById(cbT), p = document.getElementById(cbP);
+       var url = baseUrl
+         + '&tpl=' + encodeURIComponent(sel && sel.value ? sel.value : '')
+         + '&header=' + (h && h.checked ? 1:0)
+         + '&footer=' + (f && f.checked ? 1:0)
+         + '&title='  + (t && t.checked ? 1:0)
+         + '&private='+ (p && p.checked ? 1:0);
+       window.open(url, '_blank');
+       if (modal) modal.style.display='none';
+    });
+  }
 })();
 </script>";
 }
@@ -143,28 +131,30 @@ function plugin_html2pdf_post_item_form(array $params) {
    if (!plugin_html2pdf_user_can_use_pdf()) return;
 
    echo Html::scriptBlock("
-   (function(){
-     var OPEN_ID = window.__html2pdf_open_user_id || '';
-     function place(){
-       var delBtn = document.querySelector('#main-form button[name=\"delete\"]');
-       if (!delBtn || !delBtn.parentNode) return false;
-       if (document.getElementById('html2pdf_injected_user_btn')) return true;
+  (function(){
+    var OPEN_ID = window.__html2pdf_open_user_id || '';
+    function place(){
+      var delBtn = document.querySelector('#main-form button[name=\"delete\"]');
+      if (!delBtn || !delBtn.parentNode) return false;
+      if (document.getElementById('html2pdf_injected_user_btn')) return true;
 
-       var btn=document.createElement('button');
-       btn.type='button';
-       btn.id='html2pdf_injected_user_btn';
-       btn.className='btn btn-primary me-2';
-       btn.innerHTML='<i class=\"ti ti-printer\" style=\"margin-right:6px\"></i> ".addslashes(__('Munkalap nyomtatása (html2pdf)', 'html2pdf'))."';
-       btn.addEventListener('click', function(){
-          if (OPEN_ID){ var opener=document.getElementById(OPEN_ID); if (opener) opener.click(); }
-       });
-       delBtn.parentNode.insertBefore(btn, delBtn);
-       return true;
-     }
-     if (place()) return;
-     var tries=0, iv=setInterval(function(){ if(place()||++tries>40) clearInterval(iv); },250);
-   })();
-   ");
+      var btn=document.createElement('button');
+      btn.type='button';
+      btn.id='html2pdf_injected_user_btn';
+      btn.className='btn btn-primary me-2';
+      btn.innerHTML='<i class=\"ti ti-printer\" style=\"margin-right:6px\"></i> " . addslashes(__('Munkalap nyomtatása (html2pdf)', 'html2pdf')) . "';
+      btn.addEventListener('click', function(){
+         if (window.__html2pdfOpeners && typeof window.__html2pdfOpeners[OPEN_ID] === 'function') {
+            window.__html2pdfOpeners[OPEN_ID]();
+         }
+      });
+      delBtn.parentNode.insertBefore(btn, delBtn);
+      return true;
+    }
+    if (place()) return;
+    var tries=0, iv=setInterval(function(){ if(place()||++tries>40) clearInterval(iv); },250);
+  })();
+  ");
 }
 
 /** Massive actions – regisztráció */
