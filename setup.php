@@ -5,8 +5,8 @@ function plugin_init_html2pdf() {
    global $PLUGIN_HOOKS;
 
    // Űrlap hookok
-   $PLUGIN_HOOKS[Hooks::PRE_ITEM_FORM]['html2pdf']  = 'plugin_html2pdf_pre_item_form';
-   $PLUGIN_HOOKS[Hooks::POST_ITEM_FORM]['html2pdf'] = 'plugin_html2pdf_post_item_form';
+   $PLUGIN_HOOKS['pre_item_form']['html2pdf']  = 'plugin_html2pdf_pre_item_form';
+   $PLUGIN_HOOKS['post_item_form']['html2pdf'] = 'plugin_html2pdf_post_item_form';
 
    // Massive actions a Felhasználók listához
    $PLUGIN_HOOKS['use_massive_action']['html2pdf']         = 1;

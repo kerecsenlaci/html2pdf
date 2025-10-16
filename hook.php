@@ -41,52 +41,55 @@ function plugin_html2pdf_print_modal(string $base_url, array $templates, string 
       </div>
     </div>
   </div>
-</div>
-<script>
+</div>";
+echo Html::scriptBlock("
 (function(){
-  var modalId = <?php echo json_encode($modalId); ?>;
-  var baseUrl = <?php echo json_encode($base_url); ?>;
-  var selId   = <?php echo json_encode($selId); ?>;
-  var printId = <?php echo json_encode($printId); ?>;
-  var cbH     = <?php echo json_encode($cbH); ?>;
-  var cbF     = <?php echo json_encode($cbF); ?>;
-  var cbT     = <?php echo json_encode($cbT); ?>;
-  var cbP     = <?php echo json_encode($cbP); ?>;
-  var openBtnId = <?php echo json_encode($button_id); ?>;
+  var modalId = ".json_encode($modalId).";
+  var baseUrl = ".json_encode($base_url).";
+  var selId   = ".json_encode($selId).";
+  var printId = ".json_encode($printId).";
+  var cbH     = ".json_encode($cbH).";
+  var cbF     = ".json_encode($cbF).";
+  var cbT     = ".json_encode($cbT).";
+  var cbP     = ".json_encode($cbP).";
+  var openBtnId = ".json_encode($button_id).";
 
   var modal = document.getElementById(modalId);
 
-  // ➊ Globális nyitó függvény REGISZTRÁLÁSA (nem kell létező DOM gomb!)
+  // Globális nyitó, akkor is működik, ha nincs létező DOM gomb (User-es injektált gomb is hívhatja)
   window.__html2pdfOpeners = window.__html2pdfOpeners || {};
-  window.__html2pdfOpeners[openBtnId] = function(){
-     if (modal) modal.style.display = 'block';
-  };
+  window.__html2pdfOpeners[openBtnId] = function(){ if (modal) modal.style.display='block'; };
 
-  // ➋ Ha VAN tényleges DOM gomb ezzel az ID-val, kössük rá
+  // Ha létezik a gomb, kössük rá az eseményt
   var open = document.getElementById(openBtnId);
   if (open) {
-    open.addEventListener('click', function(e){ e.preventDefault(); window.__html2pdfOpeners[openBtnId](); });
+     open.addEventListener('click', function(e){
+        if (e) e.preventDefault();
+        window.__html2pdfOpeners[openBtnId]();
+        return false;
+     });
   }
 
-  // ➌ Print gomb: paraméterek összerakása és nyitás új lapon
+  // Print
   var print = document.getElementById(printId);
   if (print) {
-    print.addEventListener('click', function(){
+     print.addEventListener('click', function(){
        var sel = document.getElementById(selId);
        var h = document.getElementById(cbH), f = document.getElementById(cbF);
        var t = document.getElementById(cbT), p = document.getElementById(cbP);
        var url = baseUrl
-         + '&tpl=' + encodeURIComponent(sel && sel.value ? sel.value : '')
+         + (sel && sel.value ? '&tpl=' + encodeURIComponent(sel.value) : '')
          + '&header=' + (h && h.checked ? 1:0)
          + '&footer=' + (f && f.checked ? 1:0)
          + '&title='  + (t && t.checked ? 1:0)
          + '&private='+ (p && p.checked ? 1:0);
        window.open(url, '_blank');
        if (modal) modal.style.display='none';
-    });
+     });
   }
 })();
-</script>";
+");
+
 }
 
 /** Űrlapok előtt: Ticket-hez és (JS-injektálással) User-hez is gomb */
@@ -103,58 +106,53 @@ function plugin_html2pdf_pre_item_form(array $params) {
       $openId = 'html2pdf_open_ticket_'.mt_rand(100000,999999);
 
       echo "<tr class='tab_bg_1 center'><td colspan='4' style='padding:10px 0;'>
-              <a class='vsubmit' href='#' id='{$openId}'>".__('Munkalap nyomtatása (html2pdf)', 'html2pdf')."</a>
-            </td></tr>";
+        <button type='button' class='vsubmit' id='{$openId}'>".__('Munkalap nyomtatása (html2pdf)', 'html2pdf')."</button>
+      </td></tr>";
       plugin_html2pdf_print_modal($base, $templates, $openId);
       return;
    }
 
    // USER – itt CSAK a modált rakjuk le rejtve
    if ($params['item'] instanceof User) {
-      if (!plugin_html2pdf_user_can_use_pdf()) return;
-      $id = (int)$params['item']->getID(); if ($id<=0) return;
+   if (!Plugin::isPluginActive('pdf') || !Session::haveRight('user', READ)) return;
 
-      $base = Plugin::getWebDir('html2pdf')."/front/generate_user_report.php?id=".$id;
-      $templates = ['user_munkalap.html.twig'=>'Felhasználói összefoglaló'];
-      $openId = 'html2pdf_open_user_'.mt_rand(100000,999999);
-      plugin_html2pdf_print_modal($base, $templates, $openId);
+   $id = (int)$params['item']->getID();
+   if ($id <= 0) return;
 
-      // átadjuk az opener ID-t a post hooknak
-      echo "<script>window.__html2pdf_open_user_id=".json_encode($openId).";</script>";
-      return;
-   }
+   // egy külön „választó” oldalra viszünk, ott nincs JS-igény
+   $url = Plugin::getWebDir('html2pdf')."/front/select_user_template.php?id=".$id;
+
+   // div-es markup GLPI 11-hez (nem <tr>)
+   echo "<div class='center' style='padding:10px 0;'>
+           <a class='btn btn-primary' href='{$url}'>
+             <i class='ti ti-printer' style='margin-right:6px;'></i>"
+             . __('Munkalap nyomtatása (html2pdf)', 'html2pdf') .
+           "</a>
+         </div>";
+   return;
+}
 }
 
-/** Űrlapok után: itt biztosan kész a DOM → beszúrjuk a User gombot a „Kukába” elé */
+/** Beszúrjuk a User gombot a „Kukába” elé */
 function plugin_html2pdf_post_item_form(array $params) {
-   if (!isset($params['item']) || !($params['item'] instanceof User)) return;
-   if (!plugin_html2pdf_user_can_use_pdf()) return;
+   error_log('html2pdf POST_ITEM_FORM User OK');
+   if (empty($params['item'])) return;
+   if ($params['item']::getType() !== 'User') return;
 
-   echo Html::scriptBlock("
-  (function(){
-    var OPEN_ID = window.__html2pdf_open_user_id || '';
-    function place(){
-      var delBtn = document.querySelector('#main-form button[name=\"delete\"]');
-      if (!delBtn || !delBtn.parentNode) return false;
-      if (document.getElementById('html2pdf_injected_user_btn')) return true;
+   if (!Plugin::isPluginActive('pdf')) return;
+   if (!Session::haveRight('user', READ)) return;
 
-      var btn=document.createElement('button');
-      btn.type='button';
-      btn.id='html2pdf_injected_user_btn';
-      btn.className='btn btn-primary me-2';
-      btn.innerHTML='<i class=\"ti ti-printer\" style=\"margin-right:6px\"></i> " . addslashes(__('Munkalap nyomtatása (html2pdf)', 'html2pdf')) . "';
-      btn.addEventListener('click', function(){
-         if (window.__html2pdfOpeners && typeof window.__html2pdfOpeners[OPEN_ID] === 'function') {
-            window.__html2pdfOpeners[OPEN_ID]();
-         }
-      });
-      delBtn.parentNode.insertBefore(btn, delBtn);
-      return true;
-    }
-    if (place()) return;
-    var tries=0, iv=setInterval(function(){ if(place()||++tries>40) clearInterval(iv); },250);
-  })();
-  ");
+   $id = (int)$params['item']->getID();
+   if ($id <= 0) return;
+
+   // Egy külön (JS nélküli) sablonválasztó oldalra navigálunk
+   $url = Plugin::getWebDir('html2pdf')."/front/select_user_template.php?id=".$id;
+   echo "<div class='center' style='padding:10px 0;'>
+           <a class='btn btn-primary' href='".Html::cleanInputText($url)."'>
+             <i class='ti ti-printer' style='margin-right:6px;'></i>"
+             . __('Munkalap nyomtatása (html2pdf)', 'html2pdf') .
+           "</a>
+         </div>";
 }
 
 /** Massive actions – regisztráció */
@@ -200,8 +198,6 @@ function plugin_html2pdf_MassiveActionsProcess($data) {
    $title   = !empty($data['title'])?1:0;
    $private = !empty($data['private'])?1:0;
 
-   $url = Plugin::getWebDir('html2pdf')."/front/generate_user_report.php"
-        . "?id={$users_id}&tpl=".rawurlencode($tpl)
-        . "&header={$header}&footer={$footer}&title={$title}&private={$private}";
-   Html::redirect($url);
+   $url = Plugin::getWebDir('html2pdf')."/front/select_user_template.php?id={$users_id}";
+    Html::redirect($url);
 }
