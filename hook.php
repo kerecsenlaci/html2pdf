@@ -102,7 +102,10 @@ function plugin_html2pdf_pre_item_form(array $params) {
       $id = (int)$params['item']->getID(); if ($id<=0) return;
 
       $base = Plugin::getWebDir('html2pdf')."/front/generate_report.php?id=".$id;
-      $templates = ['ticket_munkalap.html.twig'=>'Alap munkalap'];
+      $templates = [
+        'ticket_munkalap.html.twig'=>'Alap munkalap',
+        'ticket_munkalap_merge.html.twig'=>'Csatolmány munkalap'
+      ];
       $openId = 'html2pdf_open_ticket_'.mt_rand(100000,999999);
 
       echo "<tr class='tab_bg_1 center'><td colspan='4' style='padding:10px 0;'>

@@ -93,60 +93,6 @@ td {width: 50%; background-color: #D3D3D3; margin: 5px;}
   <span>Leírás</span><br>
   {{ ticket.content|default('')|raw }}
 </div>
-
-{# Reakciók / követések (ha átadod "followups" tömbben) #}
-<h2 style="margin:16px 0 8px 0; font-size:12pt;">Reakciók</h2>
-{% if followups is defined and followups|length > 0 %}
-  <table>
-    <thead>
-      <tr>
-        <th class="cell25">Forrás</th>
-        <th class="cell25">Dátum</th>
-        <th class="cell50">Kérelmező / Megjegyzés</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for f in followups %}
-        <tr>
-          <td class="cell25">{{ f.source|default('') }}</td>
-          <td class="cell25">{{ f.date|default('') }}</td>
-          <td class="cell50">
-            {% if f.author is defined %}<div><strong>{{ f.author }}</strong></div>{% endif %}
-            {% if f.content is defined %}<div>{{ f.content|raw }}</div>{% endif %}
-          </td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-{% else %}
-  <div style="color:#666; font-size:10pt;">Nincs megjeleníthető elem</div>
-{% endif %}
-{# Bejelentés feladatok #}
-<h2 style="margin:16px 0 8px 0; font-size:12pt;">Bejelentés feladatok</h2>
-{% if tasks is not empty %}
-  <table cellpadding="3" cellspacing="0" width="100%" style="font-size:10pt; border-collapse:collapse;">
-    <thead>
-      <tr>
-        <th style="border:1px solid #ccc; background:#eee;">Dátum</th>
-        <th style="border:1px solid #ccc; background:#eee;">Technikus</th>
-        <th style="border:1px solid #ccc; background:#eee;">Kategória</th>
-        <th style="border:1px solid #ccc; background:#eee;">Leírás</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for task in tasks %}
-        <tr>
-          <td style="border:1px solid #ccc;">{{ task.begin|default(task.date|default('')) }}</td>
-          <td style="border:1px solid #ccc;">{{ task.technician_name|default('') }}</td>
-          <td style="border:1px solid #ccc;">{{ task.category_name|default('') }}</td>
-          <td style="border:1px solid #ccc;">{{ task.content|default('') }}</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-{% else %}
-  <div style="color:#666; font-size:10pt;">Nincs megjeleníthető elem</div>
-{% endif %}
 {# Dokumentumok #}
 <h2 style="margin:16px 0 8px 0; font-size:12pt;">Dokumentumok</h2>
 {% if documents is not empty %}
@@ -168,23 +114,6 @@ td {width: 50%; background-color: #D3D3D3; margin: 5px;}
       {% endfor %}
     </tbody>
   </table>
-{% else %}
-  <div style="color:#666; font-size:10pt;">Nincs megjeleníthető elem</div>
-{% endif %}
-{# Megoldás #}
-<h2 style="margin:16px 0 8px 0; font-size:12pt;">Megoldás</h2>
-{% if solution %}
-  <div style="font-size:10pt;">
-    {% if solution.date_creation is defined %}
-      <div><strong>Dátum:</strong> {{ solution.date_creation }}</div>
-    {% endif %}
-    {% if solution.user_name is defined and solution.user_name %}
-      <div><strong>Megoldotta:</strong> {{ solution.user_name }}</div>
-    {% endif %}
-    {% if solution.content is defined %}
-      <div style="margin-top:6px;">{{ solution.content|raw }}</div>
-    {% endif %}
-  </div>
 {% else %}
   <div style="color:#666; font-size:10pt;">Nincs megjeleníthető elem</div>
 {% endif %}

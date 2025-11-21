@@ -19,7 +19,7 @@ function plugin_version_html2pdf() {
    return [
       'name'         => 'HTML → PDF bridge',
       'version'      => '1.2.0',
-      'author'       => 'kerecsenlaci',
+      'author'       => 'K3RCS0',
       'requirements' => ['glpi' => ['min' => '11.0', 'max' => '11.99']],
    ];
 }
